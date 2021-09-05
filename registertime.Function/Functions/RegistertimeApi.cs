@@ -178,6 +178,37 @@ namespace registertime.Function.Functions
             });
         }
 
+        [FunctionName(nameof(DeleteRegistertime))]
+        public static async Task<IActionResult> DeleteRegistertime(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "registertime/{id}")] HttpRequest req,
+            [Table("registertime", "REGISTERTIME", "{id}", Connection = "AzureWebJobsStorage")] RegistertimeEntity registertimeEntity,
+            [Table("registertime", Connection = "AzureWebJobsStorage")] CloudTable registertimeTable,
+            string id,
+            ILogger log)
+        {
+            log.LogInformation($"delete registertime id: {id}, recieved");
+
+            if (registertimeEntity == null)
+            {
+                return new BadRequestObjectResult(new Response
+                {
+                    IsSuccess = false,
+                    Message = "NOT FOUND"
+                });
+            }
+
+            await registertimeTable.ExecuteAsync(TableOperation.Delete(registertimeEntity));
+            string message = $"Registertime: {id}, deleted";
+            log.LogInformation(message);
+
+            return new OkObjectResult(new Response
+            {
+                IsSuccess = true,
+                Message = message,
+                Result = registertimeEntity
+            });
+        }
+
 
 
     }
