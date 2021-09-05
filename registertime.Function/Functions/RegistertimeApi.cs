@@ -16,15 +16,14 @@ namespace registertime.Function.Functions
 {
     public static class RegistertimeApi
     {
-        [FunctionName(nameof(CreateRegistertimeIn))]
-        public static async Task<IActionResult> CreateRegistertimeIn(
+        [FunctionName(nameof(CreateRegistertime))]
+        public static async Task<IActionResult> CreateRegistertime(
             [HttpTrigger(AuthorizationLevel.Anonymous,"post", Route = "registertime")] HttpRequest req,
             [Table("registertime", Connection ="AzureWebJobsStorage")] CloudTable registertimeTable,
             ILogger log)
         {
-            log.LogInformation("Recieved a new entrance.");
+            log.LogInformation("Recieved a new register.");
 
-            string name = req.Query["name"];
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Registertime registertime = JsonConvert.DeserializeObject<Registertime>(requestBody);
@@ -67,6 +66,63 @@ namespace registertime.Function.Functions
             return new OkObjectResult( new Response
             {
                 IsSuccess= true,
+                Message = message,
+                Result = registertimeEntity
+            });
+        }
+
+        [FunctionName(nameof(UpdateRegistertimeIn))]
+        public static async Task<IActionResult> UpdateRegistertimeIn(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "registertime/{id}")] HttpRequest req,
+            [Table("registertime", Connection = "AzureWebJobsStorage")] CloudTable registertimeTable,
+            string id,
+            ILogger log)
+        {
+            log.LogInformation($"Update for registertime: {id}, recieved");
+
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            Registertime registertime = JsonConvert.DeserializeObject<Registertime>(requestBody);
+
+            //validate id
+            TableOperation findOperation = TableOperation.Retrieve<RegistertimeEntity>("REGISTERTIME", id);
+            TableResult findResult = await registertimeTable.ExecuteAsync(findOperation);
+
+            if (findResult.Result == null)
+            {
+                return new BadRequestObjectResult(new Response
+                {
+                    IsSuccess = false,
+                    Message = "NOT FOUND"
+                }
+                 );
+            }
+
+            //Update
+            RegistertimeEntity registertimeEntity = (RegistertimeEntity)findResult.Result;
+
+            if(registertime.Type == 0 || registertime.Type == 1)
+            {
+                registertimeEntity.Type = registertime.Type;
+            }
+
+            if(registertime.IdEmployee > 0)
+            {
+                registertimeEntity.IdEmployee = registertime.IdEmployee;
+            }
+
+            registertimeEntity.Time = registertime.Time;
+
+            registertimeEntity.Consolidate = registertime.Consolidate;
+           
+
+            TableOperation addOperation = TableOperation.Replace(registertimeEntity);
+            await registertimeTable.ExecuteAsync(addOperation);
+            string message = $"Update register time in table, register table: {id}";
+            log.LogInformation(message);
+
+            return new OkObjectResult(new Response
+            {
+                IsSuccess = true,
                 Message = message,
                 Result = registertimeEntity
             });
