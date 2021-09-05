@@ -53,7 +53,7 @@ namespace registertime.Function.Functions
                 PartitionKey= "REGISTERTIME",
                 RowKey = Guid.NewGuid().ToString(),
                 IdEmployee = registertime.IdEmployee,
-                Time = registertime.Time,
+                Time = DateTime.UtcNow,
                 Type = registertime.Type,
                 Consolidate = registertime.Consolidate
             };
@@ -127,5 +127,58 @@ namespace registertime.Function.Functions
                 Result = registertimeEntity
             });
         }
+
+        [FunctionName(nameof(GetAll))]
+        public static async Task<IActionResult> GetAll(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "registertime")] HttpRequest req,
+            [Table("registertime", Connection = "AzureWebJobsStorage")] CloudTable registertimeTable,
+            ILogger log)
+        {
+            log.LogInformation("Get All register");
+
+            TableQuery<RegistertimeEntity> query = new TableQuery<RegistertimeEntity>();
+            TableQuerySegment<RegistertimeEntity> registertime = await registertimeTable.ExecuteQuerySegmentedAsync(query, null);
+
+            string message = "Retrieved all";
+            log.LogInformation(message);
+
+            return new OkObjectResult(new Response
+            {
+                IsSuccess = true,
+                Message = message,
+                Result = registertime
+            });
+        }
+
+        [FunctionName(nameof(GetRegisterById))]
+        public static IActionResult GetRegisterById(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "registertime/{id}")] HttpRequest req,
+            [Table("registertime", "REGISTERTIME", "{id}", Connection = "AzureWebJobsStorage")] RegistertimeEntity registertimeEntity,
+            string id,
+            ILogger log)
+        {
+            log.LogInformation($"Get registertime by id: {id}, recieved");
+
+            if (registertimeEntity == null)
+            {
+                return new BadRequestObjectResult(new Response
+                {
+                    IsSuccess = false,
+                    Message = "NOT FOUND"
+                });
+            }
+            string message = $"Registertime: {id}, retrieved";
+            log.LogInformation(message);
+
+            return new OkObjectResult(new Response
+            {
+                IsSuccess = true,
+                Message = message,
+                Result = registertimeEntity
+            });
+        }
+
+
+
     }
 }
